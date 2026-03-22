@@ -235,6 +235,7 @@ Create `.env` in the `frontend/` directory:
 
 ```env
 VITE_BACKEND_URL=http://localhost:5000
+VITE_GROQ_API_KEY=gsk_w----------
 ```
 
 ### Step 3 — Install & Launch Backend
