@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useSimulationContext } from '../../Context/SimulationContext'
 import AgentCanvas from './AgentCanvas'
 import ZoneOverlays from './ZoneOverlays'
+import VulnerabilityHeatmap from './VulnerabilityHeatmap'
+import CommNetworkOverlay from './CommNetworkOverlay'
 
 import L from 'leaflet'
 delete L.Icon.Default.prototype._getIconUrl
@@ -29,12 +31,34 @@ const ZONE_TYPES = [
 
 export default function MapView() {
   const { mapCenter, pageState, agents } = useSimulationContext()
+  const [showHeatmap, setShowHeatmap] = useState(false)
+  const [showComm,    setShowComm]    = useState(false)
 
-  // Show legend only when there's something to show (agents loaded or simulation running)
   const showAgentLegend = agents.length > 0 || pageState === 'running'
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+
+      {/* Map layer toggle buttons */}
+      {showAgentLegend && (
+        <div style={{
+          position: 'absolute', top: 10, right: 10, zIndex: 900,
+          display: 'flex', flexDirection: 'column', gap: 4
+        }}>
+          {[
+            { key: 'heatmap', label: '🌡 Vulnerability', active: showHeatmap, toggle: () => setShowHeatmap(v => !v) },
+            { key: 'comm',    label: '📡 Comm Network',  active: showComm,    toggle: () => setShowComm(v => !v) }
+          ].map(({ key, label, active, toggle }) => (
+            <button key={key} onClick={toggle} style={{
+              padding: '5px 10px', fontSize: 9, fontFamily: "'Space Mono', monospace",
+              background: active ? 'rgba(255,107,43,0.15)' : 'rgba(8,8,8,0.88)',
+              border: `1px solid ${active ? '#ff6b2b60' : '#252525'}`,
+              borderRadius: 4, color: active ? '#ff6b2b' : '#666',
+              cursor: 'pointer', letterSpacing: '0.04em', backdropFilter: 'blur(6px)'
+            }}>{label}</button>
+          ))}
+        </div>
+      )}
 
       <MapContainer
         center={[mapCenter.lat, mapCenter.lng]}
@@ -50,6 +74,8 @@ export default function MapView() {
         />
         <MapController />
         <ZoneOverlays />
+        <VulnerabilityHeatmap visible={showHeatmap} />
+        <CommNetworkOverlay   visible={showComm} />
         <AgentCanvas />
       </MapContainer>
 

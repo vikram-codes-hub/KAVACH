@@ -3,6 +3,7 @@ import { useSimulationContext } from '../../Context/SimulationContext'
 import WhatIfPanel from '../simulation/WhatIfPanel'
 import StatsBar from '../simulation/StatsBar'
 import TickCounter from '../simulation/TickCounter'
+import ForecastPanel from '../simulation/ForecastPanel'
 
 
 
@@ -250,6 +251,8 @@ function RunningView({
 
       <TickCounter currentTick={currentTick} currentTime={currentTime} />
       <StatsBar stats={stats} />
+
+      <ForecastPanel />
 
       {pendingRequests > 0 && (
         <div style={{

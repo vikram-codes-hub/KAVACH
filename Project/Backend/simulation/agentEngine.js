@@ -63,11 +63,18 @@ const processAgentTick = (agent, currentTick, worldState, shelterOccupancy) => {
   // Check if disaster has reached agent zone
   const zoneAffected = disasterEngine.isZoneAffected(updated.zone);
 
+  // Determine agent's zone classification
+  const inRedZone   = worldState.zones.red.some(z => updated.zone?.toLowerCase().includes(z.toLowerCase()) || z.toLowerCase().includes(updated.zone?.toLowerCase()));
+  const inAmberZone = worldState.zones.amber.some(z => updated.zone?.toLowerCase().includes(z.toLowerCase()) || z.toLowerCase().includes(updated.zone?.toLowerCase()));
+  const inSafeZone  = !inRedZone && !inAmberZone;
+
   // ── DECISION CHAIN ──────────────────────────────────────────
 
   // 1. Already safe — do not change
   if (updated.status === 'safe') {
-    updated.currentThought = `I am safe at ${updated.destination}. Hoping others make it too.`;
+    updated.currentThought = inSafeZone
+      ? `I am at ${updated.destination}. Monitoring the situation and helping coordinate arrivals.`
+      : `I am safe at ${updated.destination}. Hoping others make it too.`;
     return updated;
   }
 
@@ -82,12 +89,23 @@ const processAgentTick = (agent, currentTick, worldState, shelterOccupancy) => {
     return _processResponder(updated, currentTick, worldState, shelterOccupancy);
   }
 
-  // 4. Green group — volunteers self-deploying
+  // 4. Green group — volunteers (zone-aware)
   if (updated.group === 'green') {
-    return _processVolunteer(updated, currentTick, worldState, zoneAffected);
+    return _processVolunteer(updated, currentTick, worldState, zoneAffected, inRedZone, inAmberZone, inSafeZone);
   }
 
-  // 5. Agent has not received alert and disaster has not reached them yet
+  // 5. Safe zone civilians — low urgency, orderly behaviour
+  if (inSafeZone) {
+    return _processSafeZoneAgent(updated, currentTick, worldState);
+  }
+
+  // 6. Amber zone civilians — cautious, preparing to move
+  if (inAmberZone) {
+    return _processAmberZoneAgent(updated, currentTick, worldState, routeBlocked, zoneAffected);
+  }
+
+  // 7. Red zone — full urgency decision chain below
+  // Agent has not received alert and disaster has not reached them yet
   if (!updated.receivedAlert && currentTick < 4 && !zoneAffected) {
     updated.status = 'unaware';
     updated.currentThought = _getUnawareThought(updated, currentTick);
@@ -247,9 +265,51 @@ const _processResponder = (agent, currentTick, worldState, shelterOccupancy) => 
   return updated;
 };
 
-const _processVolunteer = (agent, currentTick, worldState, zoneAffected) => {
+const _processVolunteer = (agent, currentTick, worldState, zoneAffected, inRedZone, inAmberZone, inSafeZone) => {
   const updated = { ...agent };
 
+  // Safe zone volunteer — coordination role, not frontline
+  if (inSafeZone) {
+    if (currentTick === 0) {
+      updated.status = 'active';
+      updated.currentThought = `Setting up a coordination point here at ${updated.neighborhood}. Calling other volunteers to register incoming evacuees.`;
+      return updated;
+    }
+    if (currentTick >= 2) {
+      updated.status = 'helping';
+      updated.currentThought = `Registering evacuees arriving from red zones. Distributing food and water. ${currentTick * 8} persons processed so far.`;
+      return updated;
+    }
+    updated.status = 'active';
+    updated.currentThought = `Safe zone is calm. Preparing to receive evacuees. Coordinating with shelter managers.`;
+    return updated;
+  }
+
+  // Amber zone volunteer — cautious, helping neighbours before self-evacuating
+  if (inAmberZone) {
+    if (currentTick === 0) {
+      updated.status = 'active';
+      updated.currentThought = `Alert received. Checking on elderly neighbours before I leave. Situation is tense but not critical yet.`;
+      return updated;
+    }
+    if (currentTick >= 2 && currentTick <= 4) {
+      updated.status = 'helping';
+      interpolatePosition(updated, 0.1);
+      updated.currentThought = `Helping a few neighbours pack and move. Water level is rising slowly. We have some time but not much.`;
+      return updated;
+    }
+    if (currentTick >= 5) {
+      updated.status = 'helping';
+      interpolatePosition(updated, 0.08);
+      updated.currentThought = `Situation worsening in ${updated.neighborhood}. Moving the last group toward ${updated.destination}. Roads still passable.`;
+      return updated;
+    }
+    updated.status = 'active';
+    updated.currentThought = `Monitoring water levels. Alerting neighbours who may not have received the official warning.`;
+    return updated;
+  }
+
+  // Red zone volunteer — frontline, high urgency
   if (currentTick === 0) {
     updated.status = 'active';
     updated.currentThought = `Just saw the alert on WhatsApp. I know this area — I know who needs help. Going out now.`;
@@ -263,7 +323,6 @@ const _processVolunteer = (agent, currentTick, worldState, zoneAffected) => {
     return updated;
   }
 
-  // Risk of volunteer getting stranded on return trip
   if (currentTick === 7 && Math.random() < 0.3) {
     updated.status = 'blocked';
     updated.currentThought = `I went back for one more person and now the road behind me is flooded. I am stranded between ${updated.neighborhood} and the shelter. Cannot go forward or back.`;
@@ -278,6 +337,81 @@ const _processVolunteer = (agent, currentTick, worldState, zoneAffected) => {
 
   updated.status = 'active';
   updated.currentThought = `Coordinating with neighbors. Checking who needs help in ${updated.neighborhood}.`;
+  return updated;
+};
+
+// Safe zone civilians — no immediate threat, orderly and calm
+const _processSafeZoneAgent = (agent, currentTick, worldState) => {
+  const updated = { ...agent };
+
+  if (currentTick <= 2) {
+    updated.status = 'active';
+    updated.currentThought = `Heard about the ${worldState.disaster.type.toLowerCase()} on the news. We are safe here but monitoring closely. Relatives in red zones are not picking up.`;
+    return updated;
+  }
+
+  if (currentTick <= 5) {
+    updated.status = 'active';
+    updated.currentThought = `Shelter nearby is filling up with evacuees. Helping where I can — distributing food, charging phones. No personal danger here.`;
+    return updated;
+  }
+
+  // Some safe zone agents move toward shelter to help
+  if (currentTick >= 6 && !updated.hasReachedShelterHelp) {
+    updated.status = 'moving';
+    updated.hasReachedShelterHelp = true;
+    interpolatePosition(updated, 0.1);
+    updated.currentThought = `Going to the shelter to volunteer. They need more hands to manage the incoming evacuees from ${worldState.zones.red[0]}.`;
+    return updated;
+  }
+
+  updated.status = 'safe';
+  updated.currentThought = `Safe zone is stable. Helping coordinate relief supplies arriving from the district headquarters.`;
+  return updated;
+};
+
+// Amber zone civilians — aware, preparing, cautious but not panicking
+const _processAmberZoneAgent = (agent, currentTick, worldState, routeBlocked, zoneAffected) => {
+  const updated = { ...agent };
+
+  if (currentTick <= 1) {
+    updated.status = 'active';
+    updated.currentThought = `Alert received. Packing essentials. Water level is rising but we are not in immediate danger yet. Watching the situation.`;
+    return updated;
+  }
+
+  if (currentTick <= 3 && !zoneAffected) {
+    updated.status = 'moving';
+    interpolatePosition(updated, updated.hasVehicle ? 0.2 : 0.1);
+    updated.currentThought = updated.hasVehicle
+      ? `Driving family to ${updated.destination} as a precaution. Roads are busy but clear. Better to leave early.`
+      : `Walking toward ${updated.destination} with family. Situation is manageable right now. Staying calm.`;
+    return updated;
+  }
+
+  // Amber zone worsening — treat like red zone from tick 4+
+  if (zoneAffected || currentTick >= 4) {
+    if (updated.vulnerability === 'critical') {
+      updated.status = 'trapped';
+      updated.needsRescue = true;
+      updated.rescueType = _getRescueType(updated);
+      updated.currentThought = `The water reached our area faster than expected. I cannot move on my own. Calling for help from ${updated.neighborhood}.`;
+      return updated;
+    }
+    if (routeBlocked) {
+      updated.status = 'blocked';
+      updated.currentThought = `Route to ${updated.destination} is now blocked. Waiting for an alternate. Situation is getting serious.`;
+      return updated;
+    }
+    updated.status = 'moving';
+    interpolatePosition(updated, updated.hasVehicle ? 0.22 : 0.09);
+    updated.currentThought = `Amber zone flooding now. Moving urgently toward ${updated.destination}. No time to wait.`;
+    return updated;
+  }
+
+  updated.status = 'moving';
+  interpolatePosition(updated, 0.12);
+  updated.currentThought = `Cautiously moving toward ${updated.destination}. Amber zone — staying alert.`;
   return updated;
 };
 

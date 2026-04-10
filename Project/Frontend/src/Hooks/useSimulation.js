@@ -1,4 +1,4 @@
-import { useSimulationContext } from '../context/SimulationContext'
+import { useSimulationContext } from '../Context/SimulationContext'
 
 // This hook provides convenient derived state and helpers
 // consumed by components that need simulation-specific logic

@@ -51,6 +51,8 @@ export const defaultContextValue = {
   pendingRequests:  0,
   disasterColor:    '#3b82f6',
   disasterLabel:    'Disaster',
+  commLinks:        [],
+  forecast:         null,
   stats: {
     safe:     0,
     moving:   0,

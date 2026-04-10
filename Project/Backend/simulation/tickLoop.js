@@ -30,6 +30,8 @@ class SimulationRunner {
     this.shelterOccupancy   = {};
     this.whatIfEvents       = [];
     this.allNeedsGenerated  = [];
+    this.interventions      = [];
+    this.commLinks          = [];
   }
 
   // ── Start ────────────────────────────────────────────────────
@@ -49,6 +51,8 @@ class SimulationRunner {
     this.coordinatorLog   = [];
     this.whatIfEvents     = [];
     this.allNeedsGenerated = [];
+    this.interventions    = [];
+    this.commLinks        = [];
 
     // Initialise shelter occupancy
     this.shelterOccupancy = {};
@@ -87,6 +91,166 @@ class SimulationRunner {
       this.tickInterval = setInterval(() => { this._runTick(); }, this.tickSpeed);
     }
     console.log(`[TICK] Speed set to ${this.tickSpeed}ms`);
+  }
+
+  // ── Intervention: deploy resource mid-simulation ─────────────
+  handleIntervention(payload) {
+    const { type, value } = payload;
+    this.interventions.push({ type, value, tick: this.currentTick });
+
+    switch (type) {
+      case 'deploy_ndrf': {
+        const count = value || 1;
+        const targets = this.agents
+          .filter(a => a.status === 'trapped' && (a.vulnerability === 'critical' || a.vulnerability === 'high'))
+          .slice(0, count);
+        targets.forEach(a => {
+          a.status = 'moving'; a.needsRescue = false;
+          a.currentThought = `NDRF team just reached ${a.neighborhood}. Being evacuated now.`;
+        });
+        this._emitLog(`✓ Intervention: ${count} NDRF team(s) — ${targets.length} agents rescued`, 'success');
+        this._emitNotification(`NDRF deployed — ${targets.length} critical agents rescued`, 'success');
+        break;
+      }
+      case 'add_ambulance': {
+        const count = value || 1;
+        const targets = this.agents
+          .filter(a => a.status === 'trapped' && a.rescueType === 'ambulance')
+          .slice(0, count);
+        targets.forEach(a => {
+          a.status = 'moving'; a.needsRescue = false;
+          a.currentThought = `Ambulance finally arrived. Being taken to hospital now.`;
+        });
+        this._emitLog(`✓ Intervention: ${count} ambulance(s) — ${targets.length} reached`, 'success');
+        this._emitNotification(`Ambulance deployed — ${targets.length} medical cases reached`, 'success');
+        break;
+      }
+      case 'open_shelter': {
+        const fullShelter = this.worldState.shelters?.find(s =>
+          (this.shelterOccupancy[s.name] || 0) >= s.capacity
+        );
+        if (fullShelter) {
+          fullShelter.capacity += (value || 50);
+          this._emitLog(`✓ Intervention: ${fullShelter.name} capacity +${value || 50}`, 'success');
+          this._emitNotification(`${fullShelter.name} overflow shelter opened`, 'success');
+        }
+        break;
+      }
+      case 'broadcast_alert': {
+        let alerted = 0;
+        this.agents.forEach(a => {
+          if (a.status === 'unaware') {
+            a.receivedAlert = true; a.status = 'moving'; alerted++;
+            a.currentThought = `Emergency broadcast reached me. Evacuating now.`;
+          }
+        });
+        this._emitLog(`✓ Intervention: Broadcast — ${alerted} unaware agents alerted`, 'success');
+        this._emitNotification(`Emergency broadcast — ${alerted} agents now evacuating`, 'success');
+        break;
+      }
+    }
+    this._pushTickState(this.currentTick, { interventionApplied: type });
+  }
+
+  // ── Predictive forecast (pure math, no LLM) ───────────────────
+  _computeForecast() {
+    const recentTicks = this.simulationLog.slice(-3);
+    if (recentTicks.length < 2) return null;
+
+    const avgTrapRate = recentTicks.reduce((sum, t) => {
+      return sum + (t.agents || []).filter(a => a.status === 'trapped').length;
+    }, 0) / recentTicks.length;
+
+    const avgSafeRate = recentTicks.reduce((sum, t) => {
+      return sum + (t.agents || []).filter(a => a.status === 'safe').length;
+    }, 0) / recentTicks.length;
+
+    const current      = this._computeStats();
+    const remaining    = TOTAL_TICKS - this.currentTick;
+    const projTrapped  = Math.min(this.agents.length, Math.round(current.trapped + avgTrapRate * remaining * 0.35));
+    const projSafe     = Math.min(this.agents.length - projTrapped, Math.round(current.safe + avgSafeRate * remaining * 0.5));
+    const cascadeRisk  = this.pendingNeeds.length >= 4;
+
+    const atRisk = this.agents
+      .filter(a => ['moving','blocked','unaware','active'].includes(a.status))
+      .filter(a => a.vulnerability === 'high' || a.vulnerability === 'critical')
+      .map(a => ({
+        id: a.id, name: a.name, zone: a.zone, vulnerability: a.vulnerability,
+        riskScore: (a.vulnerability === 'critical' ? 3 : 2) +
+                   (a.routeBlocked ? 2 : 0) + (!a.hasSmartphone ? 1 : 0) + (!a.hasVehicle ? 1 : 0)
+      }))
+      .sort((a, b) => b.riskScore - a.riskScore)
+      .slice(0, 5);
+
+    return {
+      fromTick: this.currentTick,
+      projectedTrapped: projTrapped,
+      projectedSafe: projSafe,
+      projectedSurvivalRate: Math.round((projSafe / this.agents.length) * 100),
+      atRiskAgents: atRisk,
+      cascadeRisk,
+      pendingRequests: this.pendingNeeds.length,
+      recommendation: cascadeRisk
+        ? 'DEPLOY NDRF NOW — coordinator cascade failure imminent'
+        : atRisk.length > 0
+          ? `Pre-position ambulance near ${atRisk[0]?.zone} — ${atRisk[0]?.name} at critical risk`
+          : 'Situation stable — monitor shelter capacity'
+    };
+  }
+
+  // ── Agent communication network ───────────────────────────────
+  _computeCommLinks() {
+    const links = [];
+    const coordinator = this.agents.find(a =>
+      a.group === 'blue' && a.role?.toLowerCase().includes('coordinator')
+    );
+
+    this.agents.forEach(agent => {
+      // Responder → trapped agent (rescue link)
+      if (agent.group === 'blue' && agent.status === 'managing') {
+        this.agents
+          .filter(a => a.status === 'trapped' && a.needsRescue &&
+            Math.abs(a.lat - agent.lat) < 0.05 && Math.abs(a.lng - agent.lng) < 0.05)
+          .slice(0, 2)
+          .forEach(target => links.push({
+            from: { id: agent.id, lat: agent.lat, lng: agent.lng, group: 'blue' },
+            to:   { id: target.id, lat: target.lat, lng: target.lng, group: target.group },
+            type: 'rescue', active: true
+          }));
+      }
+
+      // Volunteer → person they're helping
+      if (agent.group === 'green' && agent.status === 'helping') {
+        this.agents
+          .filter(a => (a.status === 'trapped' || a.status === 'blocked') &&
+            Math.abs(a.lat - agent.lat) < 0.04 && Math.abs(a.lng - agent.lng) < 0.04)
+          .slice(0, 1)
+          .forEach(target => links.push({
+            from: { id: agent.id, lat: agent.lat, lng: agent.lng, group: 'green' },
+            to:   { id: target.id, lat: target.lat, lng: target.lng, group: target.group },
+            type: 'volunteer_help', active: true
+          }));
+      }
+
+      // Broken link: no phone + trapped = communication blackout
+      if (!agent.hasPhone && agent.status === 'trapped') {
+        links.push({
+          from: { id: agent.id, lat: agent.lat, lng: agent.lng, group: agent.group },
+          to: null, type: 'broken', active: false, reason: 'no_phone'
+        });
+      }
+
+      // Distress call → coordinator
+      if (coordinator && agent.needsRescue && agent.hasPhone && agent.id !== coordinator.id) {
+        links.push({
+          from: { id: agent.id, lat: agent.lat, lng: agent.lng, group: agent.group },
+          to:   { id: coordinator.id, lat: coordinator.lat, lng: coordinator.lng, group: 'blue' },
+          type: 'distress_call', active: true
+        });
+      }
+    });
+
+    return links;
   }
 
   // ── What-if triggers ─────────────────────────────────────────
@@ -268,6 +432,18 @@ class SimulationRunner {
     // Step 6 — Compute stats
     const stats = this._computeStats();
 
+    // Step 6b — Communication network
+    this.commLinks = this._computeCommLinks();
+
+    // Step 6c — Predictive forecast at tick 5+
+    const forecast = this.currentTick >= 5 ? this._computeForecast() : null;
+    if (forecast) {
+      this.io.emit('tick-forecast', forecast);
+      if (forecast.cascadeRisk) {
+        this._emitLog(`⚠ FORECAST: Coordinator overload imminent — deploy NDRF now`, 'warn');
+      }
+    }
+
     // Step 7 — Log tick state
     const tickState = {
       tick:             this.currentTick,
@@ -284,7 +460,7 @@ class SimulationRunner {
     this.simulationLog.push(tickState);
 
     // Step 8 — Emit to frontend
-    this._pushTickState(this.currentTick, { stats });
+    this._pushTickState(this.currentTick, { stats, commLinks: this.commLinks, forecast });
 
     // Step 9 — Log key events
     this._logKeyEvents(stats);

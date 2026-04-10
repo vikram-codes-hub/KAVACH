@@ -1,107 +1,60 @@
+const { getDemographics, getAgentConstraints } = require('../services/demographicData');
+
 const getAgentGenerationPrompt = (worldState) => {
-  return `You are generating disaster simulation agents for CrisisSwarm, a multi-agent disaster response simulation platform.
-The simulation is set in ${worldState.disaster.location}, ${worldState.disaster.state}, India during a ${worldState.disaster.type} disaster.
-Based on the world state below, generate exactly 50 realistic citizen agents who would live and work in the affected zones.
-Return ONLY a valid JSON array with no explanation, no markdown, no code blocks, no preamble.
-The JSON must be parseable directly.
+  const demo = getDemographics(worldState.disaster.district, worldState.disaster.state);
+  const c    = getAgentConstraints(demo, 50);
 
-DISTRIBUTION RULES — MANDATORY — DO NOT DEVIATE:
-- Exactly 13 agents must have group value "blue" — responders or infrastructure operators
-- Exactly 12 agents must have group value "red" — vulnerable people in red zones who CANNOT self-evacuate
-- Exactly 13 agents must have group value "amber" — mobile citizens who CAN potentially move but face real obstacles
-- Exactly 12 agents must have group value "green" — community volunteers who self-deploy to help others
+  const redZones   = worldState.zones.red.join(', ');
+  const amberZones = worldState.zones.amber.join(', ');
+  const safeZones  = worldState.zones.safe.join(', ');
 
-UNIQUENESS RULES — MANDATORY:
-Each agent must represent a DIFFERENT TYPE of person. Do not generate two similar agents.
-The 100 agents together must cover a WIDE demographic range. Distribute across agents:
-- Multiple pregnant women or new mothers (different stages, different zones)
-- Multiple elderly people living alone (60–85 years, different mobility levels)
-- Multiple people with no smartphone (feature phone only or no phone at all)
-- Multiple people with mobility disabilities or wheelchair users
-- Multiple daily wage workers and migrant laborers
-- Multiple shop owners and small business owners
-- Multiple school teachers and college professors
-- Multiple tourists and pilgrims visiting the area
-- Multiple local NGO volunteers and community organizers
-- Multiple government officials and administrators at different levels
-- Multiple auto drivers, truck drivers, and transport operators
-- Multiple young college and school students
-- Multiple farmers and rural workers
-- Multiple hospital doctors, nurses, ASHA workers, ANMs
-- Multiple retired persons doing community work
-- Multiple street vendors and hawkers
-- Multiple construction workers at remote sites
-- Multiple hotel and dhaba owners
-- Multiple journalists and local reporters
-- Multiple children (under 15) with or without guardians
+  return `Generate 50 disaster simulation agents for ${worldState.disaster.location}, ${worldState.disaster.state} — ${worldState.disaster.type}.
+Return ONLY a valid JSON array. No markdown, no explanation.
 
-DIAGNOSTIC DESIGN — MANDATORY:
-Across the 25 red group agents, each must reveal a DIFFERENT SYSTEMIC FAILURE when they get into trouble. Spread these failures:
-- 5 red agents reveal single ambulance route failure (pregnant women or critical medical cases in different zones)
-- 5 red agents reveal digital-only alert failure (no smartphone, receives zero warning, different occupations)
-- 4 red agents reveal zero accessibility vehicles (wheelchair users or mobility impaired in different neighborhoods)
-- 5 red agents reveal shelter overflow (group leaders with dependents arriving after capacity fills)
-- 3 red agents reveal low alert compliance (delayed evacuation converting mobile person to trapped)
-- 3 red agents reveal communication blackout (no phone, no radio, no neighbor contact)
+GROUPS (exact counts):
+- "blue": 13 — responders (NDRF, police, hospital staff, shelter managers, ambulance drivers)
+- "red": 12 — vulnerable, CANNOT self-evacuate (in red zones: ${redZones})
+- "amber": 13 — mobile civilians facing obstacles (in amber zones: ${amberZones})
+- "green": 12 — community volunteers (in safe/amber zones: ${safeZones}, ${amberZones})
 
-LOCATION CONTEXT — CRITICAL:
-The disaster is in ${worldState.disaster.location}, ${worldState.disaster.state}.
-Generate agents who are REALISTIC for this specific location:
-- Use names, occupations, and neighborhoods appropriate for ${worldState.disaster.state}
-- Reference real localities, markets, hospitals, schools, mandis, ghats, and landmarks from ${worldState.disaster.location}
-- Socioeconomic mix must reflect the actual demographics of ${worldState.disaster.location} — include rural and urban agents
-- Use the exact zone names from the world state zones list
+CENSUS-BASED CONSTRAINTS (${worldState.disaster.district || worldState.disaster.location} district data):
+Population: ${c.popLakh} lakh | Rural: ${c.ruralPct}% | Literacy: ${c.literacyPct}%
+Across all 50 agents, include EXACTLY:
+- ${c.elderlyCount} elderly agents (60+ years, living alone or with limited mobility)
+- ${c.disabledCount} agents with physical disability or wheelchair dependency
+- ${c.pregnantCount} pregnant women (8th/9th month, cannot self-evacuate)
+- ${c.noPhoneCount} agents with hasSmartphone=false (feature phone or no phone)
+- ${c.noVehicleCount} agents with hasVehicle=false
+- ${c.bplCount} BPL/daily wage workers
+- ${c.migrantCount} migrant labourers
+- ${c.touristCount} tourists/pilgrims unfamiliar with area
+Primary occupations in this district: ${c.primaryOccupations.join(', ')}
+Key vulnerable groups: ${c.vulnerableGroups.join(', ')}
 
-Red zones in this scenario: ${worldState.zones.red.join(', ')}
-Amber zones in this scenario: ${worldState.zones.amber.join(', ')}
-Safe zones in this scenario: ${worldState.zones.safe.join(', ')}
+SYSTEMIC FAILURES (spread across red group agents):
+- 3 agents: no smartphone → received zero alert
+- 2 agents: pregnant/critical medical → single ambulance route failure
+- 2 agents: wheelchair/mobility impaired → zero accessible vehicle
+- 2 agents: shelter overflow → arrived after capacity filled
+- 2 agents: route blocked → trapped despite wanting to evacuate
+- 1 agent: communication blackout (no phone, no radio, no neighbour)
 
-COORDINATE RULES — CRITICAL:
-- Assign REAL latitude and longitude coordinates within the actual geographic boundaries of each zone
-- The location is ${worldState.disaster.location} — use real coordinates for this city/district
-- Map center for this scenario is lat ${worldState.map_center.lat}, lng ${worldState.map_center.lng}
-- Place agents within 0.08 degrees of the map center, distributed across their zones
-- Red zone agents must be placed within red zone geographic boundaries
-- Safe zone agents (responders) must be placed in safe zone areas
-- Do NOT use identical coordinates for two agents — vary by at least 0.002 degrees
-- Do NOT place any agent outside India
-- Spread agents realistically — not all clustered at one point
+ZONES: red=${redZones} | amber=${amberZones} | safe=${safeZones}
 
-RETURN FORMAT — each agent must have ALL these exact fields:
-{
-  "id": number (1 to 100),
-  "name": "realistic full name appropriate for ${worldState.disaster.state}",
-  "age": number,
-  "role": "specific occupation grounded in ${worldState.disaster.location} economy",
-  "group": "blue" | "red" | "amber" | "green",
-  "zone": "exact zone name copied from world state zones list",
-  "neighborhood": "specific locality within that zone with real place name from ${worldState.disaster.location}",
-  "lat": number (real coordinate near ${worldState.map_center.lat}),
-  "lng": number (real coordinate near ${worldState.map_center.lng}),
-  "hasVehicle": boolean,
-  "hasPhone": boolean,
-  "hasSmartphone": boolean,
-  "vulnerability": "low" | "medium" | "high" | "critical",
-  "destination": "specific place they need to reach during the disaster",
-  "backstory": "one sentence explaining their specific situation and why they are vulnerable or important in this scenario",
-  "initialThought": "what they are thinking at tick zero when the disaster begins — first person, specific, emotionally real, references their actual location"
-}
+FIELDS per agent (all required):
+id(1-50), name(local to ${worldState.disaster.state}), age, role, group, zone(exact name above),
+neighborhood, lat, lng, hasVehicle, hasPhone, hasSmartphone,
+vulnerability(low/medium/high/critical), destination, backstory(1 sentence), initialThought(1st person)
 
-VALIDATION BEFORE RETURNING:
-- Count blue agents — must be exactly 13
-- Count red agents — must be exactly 12
-- Count amber agents — must be exactly 13
-- Count green agents — must be exactly 12
-- Every agent has a unique id from 1 to 50
-- No two agents have identical lat/lng
-- Every red group agent has vulnerability "high" or "critical"
-- Every blue group agent has hasPhone true
-- At least 8 agents have hasSmartphone false
-- At least 5 agents have hasVehicle false AND hasSmartphone false
-- Age range spans from 8 to 82 across all agents
+RULES:
+- red agents: vulnerability must be "high" or "critical"
+- blue agents: hasPhone=true
+- age range 8-82 across all agents
+- no two identical lat/lng
+- map center: ${worldState.map_center.lat}, ${worldState.map_center.lng}
 
-World state:
-${JSON.stringify(worldState, null, 2)}`;
+World state (zones/shelters/hospitals for reference):
+${JSON.stringify({ zones: worldState.zones, shelters: worldState.shelters, hospitals: worldState.hospitals, responders: worldState.responders }, null, 1)}`;
 };
 
 module.exports = { getAgentGenerationPrompt };

@@ -3,7 +3,11 @@ import { io } from 'socket.io-client'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-let globalSocket = null  // ADD THIS — singleton socket
+let globalSocket = null  // singleton socket
+
+// Export for components that need direct socket access (ForecastPanel, etc.)
+export { globalSocket }
+export const getSocket = () => globalSocket
 
 export default function useSocket({
   onTickUpdate,
