@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSimulationContext } from '../../Context/SimulationContext'
 import {formatLogEntry} from '../../Utils/formatLog'
 
@@ -18,7 +18,7 @@ export default function SystemDashboard({ expanded, onToggleExpand, height }) {
       height: height || 130,
       minHeight: height || 130,
       maxHeight: height || 130,
-      width: '100%',                        /* spans full left-to-right */
+      width: '100%',
       background: 'var(--terminal-bg)',
       borderTop: '1px solid var(--border)',
       display: 'flex',
@@ -37,12 +37,14 @@ export default function SystemDashboard({ expanded, onToggleExpand, height }) {
         padding: '5px 14px',
         borderBottom: '1px solid #1c1c1c',
         flexShrink: 0,
-        userSelect: 'none'
+        userSelect: 'none',
+        flexWrap: 'wrap',
+        gap: 4
       }}>
 
         {/* Left: traffic lights + label */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 5 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
@@ -52,29 +54,40 @@ export default function SystemDashboard({ expanded, onToggleExpand, height }) {
             fontSize: 10,
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
-            fontFamily: 'var(--font-mono)'
+            fontFamily: 'var(--font-mono)',
+            whiteSpace: 'nowrap'
           }}>
             SYSTEM DASHBOARD
           </span>
           {worldState && (
-            <span style={{ color: '#383838', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
+            <span style={{
+              color: '#383838',
+              fontSize: 10,
+              fontFamily: 'var(--font-mono)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0
+            }}>
               — {worldState.disaster?.type} · {worldState.disaster?.location}
             </span>
           )}
         </div>
 
         {/* Right: sim ID + expand button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <span style={{
             color: '#333',
             fontSize: 10,
             letterSpacing: '0.05em',
-            fontFamily: 'var(--font-mono)'
-          }}>
+            fontFamily: 'var(--font-mono)',
+            display: 'none'  /* hidden on very small screens via class below */
+          }}
+          className="sim-id-label"
+          >
             {simId.current}
           </span>
 
-          {/* Expand / collapse toggle */}
           <button
             onClick={onToggleExpand}
             title={expanded ? 'Collapse terminal' : 'Expand terminal'}
@@ -101,7 +114,6 @@ export default function SystemDashboard({ expanded, onToggleExpand, height }) {
               e.currentTarget.style.color = '#555'
             }}
           >
-            {/* Chevron icon */}
             <svg
               width="10" height="10" viewBox="0 0 10 10"
               style={{
@@ -133,7 +145,6 @@ export default function SystemDashboard({ expanded, onToggleExpand, height }) {
           display: 'flex',
           flexDirection: 'column',
           gap: 1,
-          /* custom thin scrollbar */
           scrollbarWidth: 'thin',
           scrollbarColor: '#222 transparent'
         }}
@@ -162,6 +173,12 @@ export default function SystemDashboard({ expanded, onToggleExpand, height }) {
           })
         )}
       </div>
+
+      <style>{`
+        @media (min-width: 480px) {
+          .sim-id-label { display: inline !important; }
+        }
+      `}</style>
     </div>
   )
 }

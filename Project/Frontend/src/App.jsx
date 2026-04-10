@@ -105,7 +105,7 @@ const Preloader = ({ onDone }) => {
   )
 }
 
-// ── App ───────────────────────────────────────────────────────
+//App
 export default function App() {
   const [loading, setLoading] = useState(true)
 

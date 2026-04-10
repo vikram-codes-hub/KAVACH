@@ -20,23 +20,28 @@ export default function PipelinePanel() {
       overflowY: 'auto',
       display: 'flex',
       flexDirection: 'column',
-      gap: 0
+      gap: 0,
+      scrollbarWidth: 'thin',
+      scrollbarColor: '#1e1e1e transparent'
     }}>
 
-      {/* Panel header */}
+      {/* ── Panel header ── */}
       <div style={{
-        padding: '10px 14px',
+        padding: '10px 16px',
         borderBottom: '1px solid var(--border)',
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        background: 'var(--bg-panel)',
+        flexWrap: 'wrap',
+        gap: 6
       }}>
         <span style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 10,
-          color: 'var(--text-muted)',
-          letterSpacing: '0.08em',
+          color: '#888',
+          letterSpacing: '0.1em',
           textTransform: 'uppercase'
         }}>
           Simulation Pipeline
@@ -44,20 +49,23 @@ export default function PipelinePanel() {
         <span style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 9,
-          color: 'var(--text-muted)'
+          color: '#444',
+          background: '#1a1a1a',
+          border: '1px solid #252525',
+          padding: '2px 7px',
+          borderRadius: 3
         }}>
-          4 steps
+          4 STEPS
         </span>
       </div>
 
-      {/* Step cards */}
+      {/* ── Pipeline step cards ── */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         flex: 1
       }}>
 
-        {/* Step 01 — World State */}
         <StepCard
           number="01"
           title="World State Extraction"
@@ -71,7 +79,6 @@ export default function PipelinePanel() {
           />
         </StepCard>
 
-        {/* Step 02 — Agent Generation */}
         <StepCard
           number="02"
           title="Agent Generation"
@@ -85,7 +92,6 @@ export default function PipelinePanel() {
           />
         </StepCard>
 
-        {/* Step 03 — Simulation Config */}
         <StepCard
           number="03"
           title="Simulation Configuration"
@@ -99,14 +105,17 @@ export default function PipelinePanel() {
           />
         </StepCard>
 
-        {/* Step 04 — Simulation Run */}
         <StepCard
           number="04"
           title="Simulation Run"
           endpoint="POST /api/simulation/start"
           description="Real-time multi-agent simulation with BFS disaster spread and agent decision engine."
           status={stepStatuses.simRun}
-          highlight={pageState === 'ready'}
+          highlight={
+            pageState === 'ready' ||
+            pageState === 'running' ||
+            pageState === 'report'
+          }
         >
           <SimRunStep
             status={stepStatuses.simRun}
@@ -114,16 +123,56 @@ export default function PipelinePanel() {
           />
         </StepCard>
 
-        {/* Report — appears after simulation complete */}
         {(pageState === 'report' || reportReady) && (
-          <div style={{
-            borderTop: '1px solid var(--border)'
-          }}>
+          <div style={{ borderTop: '1px solid var(--border)' }}>
             <ReportPanel />
           </div>
         )}
 
+        {/* ── Pre-upload hint ── */}
+        {pageState === 'upload' && (
+          <div style={{
+            margin: '16px',
+            padding: '14px 16px',
+            background: 'rgba(255,107,43,0.04)',
+            border: '1px dashed rgba(255,107,43,0.2)',
+            borderRadius: 6,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6
+          }}>
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              color: '#ff6b2b',
+              letterSpacing: '0.06em'
+            }}>
+              ↖ UPLOAD PDF TO BEGIN
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: 11,
+              color: '#444',
+              lineHeight: 1.6
+            }}>
+              Upload an Uttarakhand disaster advisory on the left to start the pipeline. Each step will activate automatically.
+            </div>
+          </div>
+        )}
+
       </div>
+
+      <style>{`
+        @media (max-width: 480px) {
+          /* StepCard endpoints truncate gracefully */
+          .step-endpoint {
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+      `}</style>
     </div>
   )
 }

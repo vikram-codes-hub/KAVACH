@@ -3,7 +3,7 @@ import logoImg from '../assets/Black_Modern_A_letter_Logo__1_-removebg-preview.p
 import { useNavigate } from 'react-router-dom';
 import {
   motion, useInView, useScroll, useTransform,
-  useMotionValue, useSpring, animate
+  useMotionValue, useSpring, animate, AnimatePresence
 } from 'framer-motion';
 import Chatbot from './Chatbot';
 
@@ -18,7 +18,7 @@ const TwitterIcon = ({ size = 20 }) => (
   </svg>
 );
 
-// ── Animated number counter ─────────────────────────────────────
+// ── Animated number counter 
 function AnimatedCounter({ target, suffix = '' }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
@@ -34,7 +34,7 @@ function AnimatedCounter({ target, suffix = '' }) {
   return <span ref={ref}>{display}{suffix}</span>;
 }
 
-// ── 3D tilt card with moving spotlight ─────────────────────────
+// 3D tilt card 
 function TiltCard({ children, style }) {
   const ref = useRef(null);
   const x = useMotionValue(0);
@@ -42,8 +42,14 @@ function TiltCard({ children, style }) {
   const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [7, -7]), { stiffness: 300, damping: 30 });
   const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-7, 7]), { stiffness: 300, damping: 30 });
   const [glowPos, setGlowPos] = useState({ x: '50%', y: '50%' });
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    setIsTouch(window.matchMedia('(hover: none)').matches);
+  }, []);
 
   const handleMouse = (e) => {
+    if (isTouch) return;
     const rect = ref.current.getBoundingClientRect();
     const nx = (e.clientX - rect.left) / rect.width;
     const ny = (e.clientY - rect.top) / rect.height;
@@ -59,7 +65,15 @@ function TiltCard({ children, style }) {
       onMouseMove={handleMouse}
       onMouseLeave={handleLeave}
       whileHover={{ scale: 1.02, borderColor: 'rgba(249,115,22,0.3)' }}
-      style={{ ...style, rotateX, rotateY, transformStyle: 'preserve-3d', position: 'relative', overflow: 'hidden', transition: 'border-color 0.3s' }}
+      style={{
+        ...style,
+        rotateX: isTouch ? 0 : rotateX,
+        rotateY: isTouch ? 0 : rotateY,
+        transformStyle: 'preserve-3d',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'border-color 0.3s'
+      }}
     >
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 'inherit', pointerEvents: 'none', zIndex: 0,
@@ -71,15 +85,21 @@ function TiltCard({ children, style }) {
   );
 }
 
-// ── Magnetic button ─────────────────────────────────────────────
+//Magnetic button 
 function MagneticButton({ children, onClick, style }) {
   const ref = useRef(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const sx = useSpring(x, { stiffness: 180, damping: 14 });
   const sy = useSpring(y, { stiffness: 180, damping: 14 });
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    setIsTouch(window.matchMedia('(hover: none)').matches);
+  }, []);
 
   const handleMouse = (e) => {
+    if (isTouch) return;
     const rect = ref.current.getBoundingClientRect();
     x.set((e.clientX - rect.left - rect.width / 2) * 0.28);
     y.set((e.clientY - rect.top - rect.height / 2) * 0.28);
@@ -96,7 +116,7 @@ function MagneticButton({ children, onClick, style }) {
   );
 }
 
-// ── Word-by-word blur reveal ────────────────────────────────────
+//Word-by-word blur reveal
 function WordReveal({ text, style, delay = 0 }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-60px' });
@@ -114,7 +134,6 @@ function WordReveal({ text, style, delay = 0 }) {
   );
 }
 
-// ── Orange underline clip reveal for section labels ─────────────
 function LabelReveal({ children }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-80px' });
@@ -128,14 +147,12 @@ function LabelReveal({ children }) {
   );
 }
 
-// ── Stagger variants ────────────────────────────────────────────
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } };
 const item = {
   hidden: { opacity: 0, y: 44, filter: 'blur(6px)' },
   show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } }
 };
 
-// ── Pulsing live dot ────────────────────────────────────────────
 const PulseDot = () => (
   <span style={{ position: 'relative', display: 'inline-flex' }}>
     <motion.span animate={{ scale: [1, 2.2], opacity: [0.6, 0] }}
@@ -145,7 +162,25 @@ const PulseDot = () => (
   </span>
 );
 
-// ── Disaster canvas ─────────────────────────────────────────────
+//Hamburger icon 
+function HamburgerIcon({ open }) {
+  return (
+    <div style={{ width: 22, height: 16, position: 'relative', cursor: 'pointer' }}>
+      {[0, 1, 2].map(i => (
+        <motion.span key={i}
+          animate={open
+            ? i === 1 ? { opacity: 0 } : { rotate: i === 0 ? 45 : -45, y: i === 0 ? 7 : -7 }
+            : { opacity: 1, rotate: 0, y: i === 0 ? 0 : i === 2 ? 14 : 7 }
+          }
+          transition={{ duration: 0.25 }}
+          style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '2px', background: 'rgba(255,255,255,0.7)', borderRadius: '2px', display: 'block', transformOrigin: 'center' }}
+        />
+      ))}
+    </div>
+  );
+}
+
+//Disaster canvas
 const DisasterCanvas = () => {
   const canvasRef = useRef(null);
   useEffect(() => {
@@ -162,42 +197,43 @@ const DisasterCanvas = () => {
     const init = () => {
       terrain = Array.from({ length: rows }, () => Array.from({ length: cols }, () => { const r = Math.random(); return r < .12 ? 2 : r < .22 ? 1 : 0; }));
       flood = Array.from({ length: rows }, () => new Float32Array(cols));
-      [[Math.floor(rows*.75),Math.floor(cols*.08)],[Math.floor(rows*.82),Math.floor(cols*.20)],[Math.floor(rows*.68),Math.floor(cols*.15)]].forEach(([r,c])=>{ if(r<rows&&c<cols) flood[r][c]=0.6; });
-      agents = Array.from({ length: 22 }, (_,i) => ({ x:rand(0,cols),y:rand(0,rows),vx:rand(-.15,.15),vy:rand(-.15,.15),color:i<9?'#ef4444':i<15?'#f97316':'#22c55e',trapped:false,bp:rand(0,Math.PI*2) }));
-      rain = Array.from({ length: 100 }, () => ({ x:rand(0,cols),y:rand(0,rows),s:rand(.4,.9) }));
+      [[Math.floor(rows * .75), Math.floor(cols * .08)], [Math.floor(rows * .82), Math.floor(cols * .20)], [Math.floor(rows * .68), Math.floor(cols * .15)]].forEach(([r, c]) => { if (r < rows && c < cols) flood[r][c] = 0.6; });
+      agents = Array.from({ length: 22 }, (_, i) => ({ x: rand(0, cols), y: rand(0, rows), vx: rand(-.15, .15), vy: rand(-.15, .15), color: i < 9 ? '#ef4444' : i < 15 ? '#f97316' : '#22c55e', trapped: false, bp: rand(0, Math.PI * 2) }));
+      rain = Array.from({ length: 100 }, () => ({ x: rand(0, cols), y: rand(0, rows), s: rand(.4, .9) }));
     };
     const spreadFlood = () => {
-      if (frame%6!==0) return;
-      const next = flood.map(r=>new Float32Array(r));
-      for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) if(flood[r][c]>.05){[[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(nr>=0&&nr<rows&&nc>=0&&nc<cols&&next[nr][nc]<.1&&terrain[nr][nc]!==2)if(Math.random()<.12)next[nr][nc]=flood[r][c]*rand(.55,.82);});next[r][c]=Math.min(next[r][c]+.008,.88);}
-      flood=next;
+      if (frame % 6 !== 0) return;
+      const next = flood.map(r => new Float32Array(r));
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (flood[r][c] > .05) { [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dr, dc]) => { const nr = r + dr, nc = c + dc; if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && next[nr][nc] < .1 && terrain[nr][nc] !== 2) if (Math.random() < .12) next[nr][nc] = flood[r][c] * rand(.55, .82); }); next[r][c] = Math.min(next[r][c] + .008, .88); }
+      flood = next;
     };
     const draw = () => {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){const fl=flood[r][c];if(fl>.05){const w=.7+.3*Math.sin(frame*.04+r*.3+c*.2);ctx.fillStyle=`rgba(20,100,220,${fl*.65*w})`;ctx.fillRect(c*P,r*P,P,P);if(fl<.3){ctx.fillStyle=`rgba(180,220,255,${(.3-fl)*1.2})`;ctx.fillRect(c*P,r*P,P,2);}}else{ctx.fillStyle=terrain[r][c]===2?'rgba(45,55,80,.55)':terrain[r][c]===1?'rgba(55,60,80,.35)':'rgba(15,28,52,.28)';ctx.fillRect(c*P,r*P,P,P);}}
-      ctx.strokeStyle='rgba(255,255,255,.035)';ctx.lineWidth=.5;
-      for(let r=0;r<=rows;r++){ctx.beginPath();ctx.moveTo(0,r*P);ctx.lineTo(canvas.width,r*P);ctx.stroke();}
-      for(let c=0;c<=cols;c++){ctx.beginPath();ctx.moveTo(c*P,0);ctx.lineTo(c*P,canvas.height);ctx.stroke();}
-      [{r:Math.floor(rows*.25),c:Math.floor(cols*.55),w:9,h:5},{r:Math.floor(rows*.55),c:Math.floor(cols*.70),w:7,h:4}].forEach(z=>{const p=.12+.10*Math.sin(frame*.04);ctx.fillStyle=`rgba(220,38,38,${p})`;ctx.fillRect(z.c*P,z.r*P,z.w*P,z.h*P);});
-      ctx.fillStyle='rgba(147,200,255,.18)';rain.forEach(d=>{ctx.fillRect(Math.floor(d.x)*P+P/2,Math.floor(d.y)*P,1,P*2);d.y+=d.s;if(d.y>rows){d.y=-1;d.x=rand(0,cols);}});
-      agents.forEach(a=>{const r=Math.floor(a.y),c=Math.floor(a.x);if(r>=0&&r<rows&&c>=0&&c<cols&&flood[r][c]>.5)a.trapped=true;if(!a.trapped){let fx=0,fy=0;if(r>0&&flood[r-1]?.[c]>.1)fy+=.4;if(r<rows-1&&flood[r+1]?.[c]>.1)fy-=.4;if(c>0&&flood[r]?.[c-1]>.1)fx+=.4;if(c<cols-1&&flood[r]?.[c+1]>.1)fx-=.4;a.x=Math.max(0,Math.min(cols-1,a.x+a.vx+fx*.08));a.y=Math.max(0,Math.min(rows-1,a.y+a.vy+fy*.08));}const px=Math.floor(a.x)*P,py=Math.floor(a.y)*P;ctx.globalAlpha=a.trapped?(Math.sin(frame*.15+a.bp)>0?1:.2):1;ctx.fillStyle=a.color;ctx.fillRect(px,py,P,P);ctx.globalAlpha=1;});
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const fl = flood[r][c]; if (fl > .05) { const w = .7 + .3 * Math.sin(frame * .04 + r * .3 + c * .2); ctx.fillStyle = `rgba(20,100,220,${fl * .65 * w})`; ctx.fillRect(c * P, r * P, P, P); if (fl < .3) { ctx.fillStyle = `rgba(180,220,255,${(.3 - fl) * 1.2})`; ctx.fillRect(c * P, r * P, P, 2); } } else { ctx.fillStyle = terrain[r][c] === 2 ? 'rgba(45,55,80,.55)' : terrain[r][c] === 1 ? 'rgba(55,60,80,.35)' : 'rgba(15,28,52,.28)'; ctx.fillRect(c * P, r * P, P, P); } }
+      ctx.strokeStyle = 'rgba(255,255,255,.035)'; ctx.lineWidth = .5;
+      for (let r = 0; r <= rows; r++) { ctx.beginPath(); ctx.moveTo(0, r * P); ctx.lineTo(canvas.width, r * P); ctx.stroke(); }
+      for (let c = 0; c <= cols; c++) { ctx.beginPath(); ctx.moveTo(c * P, 0); ctx.lineTo(c * P, canvas.height); ctx.stroke(); }
+      [{ r: Math.floor(rows * .25), c: Math.floor(cols * .55), w: 9, h: 5 }, { r: Math.floor(rows * .55), c: Math.floor(cols * .70), w: 7, h: 4 }].forEach(z => { const p = .12 + .10 * Math.sin(frame * .04); ctx.fillStyle = `rgba(220,38,38,${p})`; ctx.fillRect(z.c * P, z.r * P, z.w * P, z.h * P); });
+      ctx.fillStyle = 'rgba(147,200,255,.18)'; rain.forEach(d => { ctx.fillRect(Math.floor(d.x) * P + P / 2, Math.floor(d.y) * P, 1, P * 2); d.y += d.s; if (d.y > rows) { d.y = -1; d.x = rand(0, cols); } });
+      agents.forEach(a => { const r = Math.floor(a.y), c = Math.floor(a.x); if (r >= 0 && r < rows && c >= 0 && c < cols && flood[r][c] > .5) a.trapped = true; if (!a.trapped) { let fx = 0, fy = 0; if (r > 0 && flood[r - 1]?.[c] > .1) fy += .4; if (r < rows - 1 && flood[r + 1]?.[c] > .1) fy -= .4; if (c > 0 && flood[r]?.[c - 1] > .1) fx += .4; if (c < cols - 1 && flood[r]?.[c + 1] > .1) fx -= .4; a.x = Math.max(0, Math.min(cols - 1, a.x + a.vx + fx * .08)); a.y = Math.max(0, Math.min(rows - 1, a.y + a.vy + fy * .08)); } const px = Math.floor(a.x) * P, py = Math.floor(a.y) * P; ctx.globalAlpha = a.trapped ? (Math.sin(frame * .15 + a.bp) > 0 ? 1 : .2) : 1; ctx.fillStyle = a.color; ctx.fillRect(px, py, P, P); ctx.globalAlpha = 1; });
       frame++;
     };
-    const loop=()=>{spreadFlood();draw();id=requestAnimationFrame(loop);};
-    resize();id=requestAnimationFrame(loop);
-    const ro=new ResizeObserver(resize);ro.observe(canvas);
-    return()=>{cancelAnimationFrame(id);ro.disconnect();};
-  },[]);
-  return <canvas ref={canvasRef} style={{position:'absolute',inset:0,width:'100%',height:'100%',pointerEvents:'none',imageRendering:'pixelated'}}/>;
+    const loop = () => { spreadFlood(); draw(); id = requestAnimationFrame(loop); };
+    resize(); id = requestAnimationFrame(loop);
+    const ro = new ResizeObserver(resize); ro.observe(canvas);
+    return () => { cancelAnimationFrame(id); ro.disconnect(); };
+  }, []);
+  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', imageRendering: 'pixelated' }} />;
 };
 
-// ── Landing Page ────────────────────────────────────────────────
+//Landing Page
 export default function LandingPage() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
-  const heroParallaxY   = useTransform(scrollYProgress, [0, 1], ['0%', '25%']);
+  const heroParallaxY = useTransform(scrollYProgress, [0, 1], ['0%', '25%']);
   const heroFadeOpacity = useTransform(scrollYProgress, [0, 0.65], [1, 0]);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
@@ -208,6 +244,18 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', h);
   }, []);
 
+  // Close menu on scroll
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
+
+  const navLinks = ['The Problem', 'How It Works', 'Why India'];
+
   const problems = [
     { title: 'The Plan Problem', desc: 'Disaster response plans are written months in advance on paper. The moment a real disaster is different from what was planned — which is every time — the plan is wrong.' },
     { title: 'The Simulation Problem', desc: 'No tool exists that lets government officials stress-test their plan before the disaster. No system simulates human behavior inside a disaster — who panics, who helps, who ignores alerts, who gets trapped.' },
@@ -215,18 +263,23 @@ export default function LandingPage() {
   ];
 
   const steps = [
-    { icon: '📄', num: '01', title: 'Upload',   desc: 'Upload any real government disaster advisory PDF.' },
-    { icon: '🧠', num: '02', title: 'Extract',  desc: 'Gemini AI extracts affected zones, roads, shelters, hospitals.' },
+    { icon: '📄', num: '01', title: 'Upload', desc: 'Upload any real government disaster advisory PDF.' },
+    { icon: '🧠', num: '02', title: 'Extract', desc: 'Gemini AI extracts affected zones, roads, shelters, hospitals.' },
     { icon: '👥', num: '03', title: 'Generate', desc: 'Generate 20 real citizens specific to the zones.' },
     { icon: '🗺️', num: '04', title: 'Simulate', desc: 'Watch tick-by-tick simulation unfold in real time.' },
-    { icon: '⚡', num: '05', title: 'Interact',  desc: 'Break things in real time and see the cascade.' },
-    { icon: '📊', num: '06', title: 'Report',   desc: 'Get government-style bottleneck report.' },
+    { icon: '⚡', num: '05', title: 'Interact', desc: 'Break things in real time and see the cascade.' },
+    { icon: '📊', num: '06', title: 'Report', desc: 'Get government-style bottleneck report.' },
   ];
 
-  const cardBase = { padding: '32px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' };
+  const cardBase = {
+    padding: '32px',
+    borderRadius: '16px',
+    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(255,255,255,0.02)'
+  };
 
   return (
-    <div style={{ width:'100%', minHeight:'100vh', backgroundColor:'#05080f', color:'white', fontFamily:'"Inter","Segoe UI",system-ui,sans-serif', overflowX:'hidden' }}>
+    <div style={{ width: '100%', minHeight: '100vh', backgroundColor: '#05080f', color: 'white', fontFamily: '"Inter","Segoe UI",system-ui,sans-serif', overflowX: 'hidden' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         body{margin:0;padding:0;}html{scroll-behavior:smooth;}::selection{background:rgba(239,68,68,0.25);}
@@ -236,83 +289,180 @@ export default function LandingPage() {
           background-size:200% auto;background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
           animation:shimmer 4s linear infinite;
         }
+        /* ── Responsive helpers ── */
+        .desktop-nav { display: flex; }
+        .mobile-menu-btn { display: none; }
+        .stat-pills { flex-direction: row; }
+        .hero-cta { flex-direction: row; }
+        .problems-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        .steps-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+        .footer-inner { flex-direction: row; justify-content: space-between; text-align: left; }
+        .section-pad { padding-top: 112px; padding-bottom: 112px; }
+
+        @media (max-width: 768px) {
+          .desktop-nav { display: none !important; }
+          .desktop-github { display: none !important; }
+          .mobile-menu-btn { display: flex !important; }
+          .stat-pills { flex-direction: column; align-items: center; }
+          .hero-cta { flex-direction: column; align-items: center; }
+          .hero-cta button { width: 100%; max-width: 320px; justify-content: center; }
+          .problems-grid { grid-template-columns: 1fr !important; }
+          .steps-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .footer-inner { flex-direction: column; align-items: center; text-align: center; }
+          .section-pad { padding-top: 72px !important; padding-bottom: 72px !important; }
+          .quote-box { padding: 28px !important; }
+          .cta-section { padding-top: 56px !important; padding-bottom: 56px !important; }
+          .hero-desc { font-size: 14px !important; }
+          .nav-height { height: 56px !important; }
+        }
+
+        @media (max-width: 480px) {
+          .steps-grid { grid-template-columns: 1fr !important; }
+          .stat-pill { width: 100%; max-width: 280px; }
+        }
+
+        /* Mobile menu overlay */
+        .mobile-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 40;
+          background: rgba(5,8,15,0.97);
+          backdrop-filter: blur(20px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 40px;
+        }
       `}</style>
 
       {/* NAVBAR */}
       <motion.header
-        initial={{ opacity:0, y:-32 }}
-        animate={{ opacity:1, y:0 }}
-        transition={{ duration:0.7, ease:[0.22,1,0.36,1] }}
-        style={{ position:'fixed',top:0,left:0,right:0,zIndex:50,transition:'all 0.3s', background:scrolled?'rgba(5,8,15,0.9)':'transparent', backdropFilter:scrolled?'blur(16px)':'none', borderBottom:scrolled?'1px solid rgba(255,255,255,0.05)':'none' }}
+        initial={{ opacity: 0, y: -32 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, transition: 'all 0.3s',
+          background: scrolled ? 'rgba(5,8,15,0.9)' : 'transparent',
+          backdropFilter: scrolled ? 'blur(16px)' : 'none',
+          borderBottom: scrolled ? '1px solid rgba(255,255,255,0.05)' : 'none'
+        }}
       >
-        <div style={{ maxWidth:'80rem',margin:'0 auto',padding:'0 1rem',display:'flex',alignItems:'center',justifyContent:'space-between',height:'64px' }}>
-          <motion.a href="#" whileHover={{ scale:1.05 }} style={{ display:'flex',alignItems:'center',gap:'12px',textDecoration:'none' }}>
-            <div style={{ width:'36px',height:'36px' }}>
-              <img src={logoImg} alt="KAVACH" style={{ width:'100%',height:'100%',objectFit:'contain',filter:'invert(1)' }} />
+        <div className="nav-height" style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '64px' }}>
+          {/* Logo */}
+          <motion.a href="#" whileHover={{ scale: 1.05 }} style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
+            <div style={{ width: '36px', height: '36px', flexShrink: 0 }}>
+              <img src={logoImg} alt="KAVACH" style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'invert(1)' }} />
             </div>
             <div>
-              <div style={{ fontSize:'10px',fontWeight:900,letterSpacing:'2px',color:'rgba(255,255,255,0.4)',margin:0 }}>कवच</div>
-              <div style={{ fontSize:'16px',fontWeight:900,letterSpacing:'2px',color:'white',lineHeight:1,margin:0 }}>KAVACH</div>
-              <div style={{ fontSize:'7.5px',letterSpacing:'0.2em',color:'rgba(249,115,22,0.65)',textTransform:'uppercase',fontWeight:500 }}>Crisis Swarm Platform</div>
+              <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '2px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>कवच</div>
+              <div style={{ fontSize: '16px', fontWeight: 900, letterSpacing: '2px', color: 'white', lineHeight: 1, margin: 0 }}>KAVACH</div>
+              <div style={{ fontSize: '7.5px', letterSpacing: '0.2em', color: 'rgba(249,115,22,0.65)', textTransform: 'uppercase', fontWeight: 500 }}>Crisis Swarm Platform</div>
             </div>
           </motion.a>
 
-          <nav style={{ display:'flex',gap:'32px',alignItems:'center' }}>
-            {['The Problem','How It Works','Why India'].map((l,i) => (
-              <motion.a key={l} href={`#${l.toLowerCase().replace(/\s+/g,'-')}`}
-                initial={{ opacity:0,y:-12 }} animate={{ opacity:1,y:0 }}
-                transition={{ duration:0.5,delay:0.15+i*.08 }}
-                whileHover={{ color:'white',y:-2 }}
-                style={{ fontSize:'12px',fontWeight:500,color:'rgba(255,255,255,0.5)',textDecoration:'none',letterSpacing:'1px',textTransform:'uppercase' }}
+          {/* Desktop nav */}
+          <nav className="desktop-nav" style={{ gap: '32px', alignItems: 'center' }}>
+            {navLinks.map((l, i) => (
+              <motion.a key={l}
+                href={`#${l.toLowerCase().replace(/\s+/g, '-')}`}
+                initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.15 + i * .08 }}
+                whileHover={{ color: 'white', y: -2 }}
+                style={{ fontSize: '12px', fontWeight: 500, color: 'rgba(255,255,255,0.5)', textDecoration: 'none', letterSpacing: '1px', textTransform: 'uppercase' }}
               >{l}</motion.a>
             ))}
           </nav>
 
-          <motion.button
-            initial={{ opacity:0,scale:.9 }} animate={{ opacity:1,scale:1 }} transition={{ delay:.4 }}
-            whileHover={{ scale:1.06 }} whileTap={{ scale:.95 }}
-            style={{ display:'flex',alignItems:'center',gap:'8px',padding:'8px 16px',fontSize:'12px',fontWeight:600,color:'rgba(255,255,255,0.6)',border:'1px solid rgba(255,255,255,0.1)',background:'transparent',borderRadius:'9999px',cursor:'pointer' }}
-          ><GitHubIcon size={14}/> GitHub</motion.button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <motion.button
+              className="desktop-github"
+              onClick={() => window.open('https://github.com/vikram-codes-hub/KAVACH', '_blank')}
+              initial={{ opacity: 0, scale: .9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: .4 }}
+              whileHover={{ scale: 1.06 }} whileTap={{ scale: .95 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', borderRadius: '9999px', cursor: 'pointer' }}
+            ><GitHubIcon size={14} /> GitHub</motion.button>
+
+            {/* Hamburger */}
+            <motion.button
+              className="mobile-menu-btn"
+              onClick={() => setMobileMenuOpen(o => !o)}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px', display: 'none', alignItems: 'center', justifyContent: 'center' }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <HamburgerIcon open={mobileMenuOpen} />
+            </motion.button>
+          </div>
         </div>
       </motion.header>
 
-      {/* HERO */}
-      <section ref={heroRef} style={{ position:'relative',minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',paddingTop:'80px',paddingBottom:'128px',overflow:'hidden',background:'#05080f' }}>
-        <DisasterCanvas />
-        <motion.div style={{ position:'absolute',inset:0,pointerEvents:'none',opacity:heroFadeOpacity,background:'radial-gradient(ellipse 80% 60% at 50% 50%,rgba(5,8,15,0.45) 0%,rgba(5,8,15,0.92) 100%)' }} />
-        <div style={{ position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:'600px',height:'300px',borderRadius:'9999px',pointerEvents:'none',background:'radial-gradient(ellipse at 50% 0%,rgba(220,38,38,0.18) 0%,transparent 70%)' }} />
+      {/* MOBILE MENU OVERLAY */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            className="mobile-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            {navLinks.map((l, i) => (
+              <motion.a key={l}
+                href={`#${l.toLowerCase().replace(/\s+/g, '-')}`}
+                onClick={() => setMobileMenuOpen(false)}
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07, duration: 0.4 }}
+                style={{ fontSize: '28px', fontWeight: 800, color: 'rgba(255,255,255,0.8)', textDecoration: 'none', letterSpacing: '1px' }}
+              >{l}</motion.a>
+            ))}
+            <motion.a href="#"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25, duration: 0.4 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none', marginTop: '16px' }}
+            ><GitHubIcon size={18} /> GitHub</motion.a>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        <motion.div style={{ position:'relative',zIndex:10,maxWidth:'80rem',margin:'0 auto',padding:'0 1rem',textAlign:'center', y:heroParallaxY }}>
+      {/* HERO */}
+      <section ref={heroRef} style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: '80px', paddingBottom: '128px', overflow: 'hidden', background: '#05080f' }}>
+        <DisasterCanvas />
+        <motion.div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: heroFadeOpacity, background: 'radial-gradient(ellipse 80% 60% at 50% 50%,rgba(5,8,15,0.45) 0%,rgba(5,8,15,0.92) 100%)' }} />
+        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '600px', height: '300px', borderRadius: '9999px', pointerEvents: 'none', background: 'radial-gradient(ellipse at 50% 0%,rgba(220,38,38,0.18) 0%,transparent 70%)' }} />
+
+        <motion.div style={{ position: 'relative', zIndex: 10, maxWidth: '80rem', margin: '0 auto', padding: '0 1.25rem', textAlign: 'center', width: '100%', boxSizing: 'border-box', y: heroParallaxY }}>
 
           {/* Badge */}
           <motion.div
-            initial={{ opacity:0,scale:.7,y:20 }}
-            animate={{ opacity:1,scale:1,y:0 }}
-            transition={{ duration:.7,delay:.1,ease:[0.22,1,0.36,1] }}
-            style={{ display:'inline-flex',alignItems:'center',gap:'8px',padding:'8px 16px',borderRadius:'9999px',border:'1px solid rgba(239,68,68,0.3)',background:'rgba(239,68,68,0.1)',color:'#f87171',fontSize:'12px',fontWeight:600,letterSpacing:'1px',textTransform:'uppercase',marginBottom:'40px' }}
+            initial={{ opacity: 0, scale: .7, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: .7, delay: .1, ease: [0.22, 1, 0.36, 1] }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '9999px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: '#f87171', fontSize: '11px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '40px' }}
           >
             <PulseDot /> Live Simulation Platform
           </motion.div>
 
-          {/* Main headline — word by word */}
-          <div style={{ fontSize:'clamp(2rem,8vw,4rem)',fontWeight:900,letterSpacing:'-1px',lineHeight:1.2,marginBottom:'12px' }}>
-            <div style={{ marginBottom:'4px' }}>
-              {['विपदं','पूर्वं','अभ्यस्य,'].map((w,i) => (
+          {/* Main headline */}
+          <div style={{ fontSize: 'clamp(1.75rem,7vw,4rem)', fontWeight: 900, letterSpacing: '-1px', lineHeight: 1.2, marginBottom: '12px' }}>
+            <div style={{ marginBottom: '4px' }}>
+              {['विपदं', 'पूर्वं', 'अभ्यस्य,'].map((w, i) => (
                 <motion.span key={i}
-                  initial={{ opacity:0,y:40,filter:'blur(10px)' }}
-                  animate={{ opacity:1,y:0,filter:'blur(0px)' }}
-                  transition={{ duration:.7,delay:.2+i*.09,ease:[0.22,1,0.36,1] }}
-                  style={{ display:'inline-block',marginRight:'.3em',color:'white' }}
+                  initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: .7, delay: .2 + i * .09, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ display: 'inline-block', marginRight: '.3em', color: 'white' }}
                 >{w}</motion.span>
               ))}
             </div>
             <div>
-              {['यत्','सा','त्वां','न','अभ्यसेत्'].map((w,i) => (
+              {['यत्', 'सा', 'त्वां', 'न', 'अभ्यसेत्'].map((w, i) => (
                 <motion.span key={i}
-                  initial={{ opacity:0,y:40,filter:'blur(10px)' }}
-                  animate={{ opacity:1,y:0,filter:'blur(0px)' }}
-                  transition={{ duration:.7,delay:.5+i*.08,ease:[0.22,1,0.36,1] }}
-                  style={{ display:'inline-block',marginRight:'.3em' }}
+                  initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: .7, delay: .5 + i * .08, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ display: 'inline-block', marginRight: '.3em' }}
                   className="kavach-shimmer"
                 >{w}</motion.span>
               ))}
@@ -321,57 +471,61 @@ export default function LandingPage() {
 
           {/* Tagline */}
           <motion.p
-            initial={{ opacity:0,filter:'blur(8px)' }}
-            animate={{ opacity:1,filter:'blur(0px)' }}
-            transition={{ duration:.8,delay:.95 }}
-            style={{ fontSize:'16px',color:'rgba(255,255,255,0.4)',fontStyle:'italic',marginBottom:'32px',letterSpacing:'.5px' }}
+            initial={{ opacity: 0, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, filter: 'blur(0px)' }}
+            transition={{ duration: .8, delay: .95 }}
+            style={{ fontSize: 'clamp(13px,2vw,16px)', color: 'rgba(255,255,255,0.4)', fontStyle: 'italic', marginBottom: '32px', letterSpacing: '.5px' }}
           >
             "Rehearse the disaster before it rehearses you"
           </motion.p>
 
           {/* Description */}
           <motion.p
-            initial={{ opacity:0,y:20 }}
-            animate={{ opacity:1,y:0 }}
-            transition={{ duration:.7,delay:1.05,ease:[0.22,1,0.36,1] }}
-            style={{ fontSize:'16px',color:'rgba(255,255,255,0.55)',maxWidth:'48rem',margin:'0 auto 36px',lineHeight:1.6 }}
+            className="hero-desc"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: .7, delay: 1.05, ease: [0.22, 1, 0.36, 1] }}
+            style={{ fontSize: '16px', color: 'rgba(255,255,255,0.55)', maxWidth: '48rem', margin: '0 auto 36px', lineHeight: 1.6, padding: '0 1rem' }}
           >
             Kavach is a multi-agent disaster simulation platform that uses real government advisories to model how diverse populations respond to disasters.
           </motion.p>
 
-          {/* CTA Buttons — magnetic */}
+          {/* CTA Buttons */}
           <motion.div
-            initial={{ opacity:0,y:24 }}
-            animate={{ opacity:1,y:0 }}
-            transition={{ duration:.7,delay:1.15,ease:[0.22,1,0.36,1] }}
-            style={{ display:'flex',gap:'16px',justifyContent:'center',marginBottom:'32px',flexWrap:'wrap' }}
+            className="hero-cta"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: .7, delay: 1.15, ease: [0.22, 1, 0.36, 1] }}
+            style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '32px', flexWrap: 'wrap', padding: '0 1rem' }}
           >
             <MagneticButton onClick={() => navigate('/analysis')}
-              style={{ display:'flex',alignItems:'center',gap:'12px',padding:'16px 36px',borderRadius:'9999px',fontWeight:700,fontSize:'14px',letterSpacing:'.5px',background:'linear-gradient(135deg,#dc2626 0%,#f97316 100%)',color:'white',boxShadow:'0 0 32px rgba(220,38,38,0.45),inset 0 1px 0 rgba(255,255,255,0.15)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 36px', borderRadius: '9999px', fontWeight: 700, fontSize: '14px', letterSpacing: '.5px', background: 'linear-gradient(135deg,#dc2626 0%,#f97316 100%)', color: 'white', boxShadow: '0 0 32px rgba(220,38,38,0.45),inset 0 1px 0 rgba(255,255,255,0.15)' }}
             ><span>▶</span> Start Analysis</MagneticButton>
 
-            <MagneticButton style={{ padding:'16px 36px',borderRadius:'9999px',fontWeight:600,fontSize:'14px',border:'1px solid rgba(255,255,255,0.2)',background:'transparent',color:'rgba(255,255,255,0.8)' }}>
+            <MagneticButton style={{ padding: '16px 36px', borderRadius: '9999px', fontWeight: 600, fontSize: '14px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.8)' }}>
               About Us →
             </MagneticButton>
           </motion.div>
 
-          {/* Stat pills — animated counters */}
+          {/* Stat pills */}
           <motion.div
-            initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:1.25,duration:.6 }}
-            style={{ display:'flex',gap:'12px',justifyContent:'center',flexWrap:'wrap' }}
+            className="stat-pills"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.25, duration: .6 }}
+            style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', padding: '0 1rem' }}
           >
-            {[{target:20,suffix:'+',label:'AI-generated agents'},{target:10,suffix:'+',label:'Simulation ticks'},{target:1,suffix:'',label:'Bottleneck report'}].map(({target,suffix,label},i) => (
+            {[{ target: 20, suffix: '+', label: 'AI-generated agents' }, { target: 10, suffix: '+', label: 'Simulation ticks' }, { target: 1, suffix: '', label: 'Bottleneck report' }].map(({ target, suffix, label }, i) => (
               <motion.div key={label}
-                initial={{ opacity:0,scale:.7,y:20 }}
-                animate={{ opacity:1,scale:1,y:0 }}
-                transition={{ duration:.55,delay:1.3+i*.1,ease:[0.22,1,0.36,1] }}
-                whileHover={{ scale:1.07,borderColor:'rgba(249,115,22,0.35)' }}
-                style={{ display:'flex',alignItems:'center',gap:'12px',padding:'12px 24px',borderRadius:'9999px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)',backdropFilter:'blur(8px)' }}
+                className="stat-pill"
+                initial={{ opacity: 0, scale: .7, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: .55, delay: 1.3 + i * .1, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={{ scale: 1.07, borderColor: 'rgba(249,115,22,0.35)' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 24px', borderRadius: '9999px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(8px)' }}
               >
-                <span style={{ fontSize:'24px',fontWeight:900,color:'#fb923c' }}>
+                <span style={{ fontSize: '24px', fontWeight: 900, color: '#fb923c' }}>
                   <AnimatedCounter target={target} suffix={suffix} />
                 </span>
-                <span style={{ fontSize:'12px',color:'rgba(255,255,255,0.4)',fontWeight:600,textTransform:'uppercase',letterSpacing:'.5px' }}>{label}</span>
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.5px' }}>{label}</span>
               </motion.div>
             ))}
           </motion.div>
@@ -379,69 +533,72 @@ export default function LandingPage() {
       </section>
 
       {/* PROBLEM SECTION */}
-      <section id="the-problem" style={{ position:'relative',paddingTop:'112px',paddingBottom:'112px',background:'#07091a',borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ maxWidth:'80rem',margin:'0 auto',padding:'0 1rem' }}>
-          <div style={{ textAlign:'center',marginBottom:'80px' }}>
+      <section id="the-problem" className="section-pad" style={{ position: 'relative', background: '#07091a', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1.25rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '80px' }}>
             <LabelReveal>The Problem</LabelReveal>
-            <h2 style={{ fontSize:'clamp(2rem,6vw,3.5rem)',fontWeight:900,lineHeight:1.2,maxWidth:'64rem',margin:'0 auto' }}>
-              <WordReveal text="India's Disaster Plans Are Written For" style={{ color:'white' }} delay={0.05} /><br/>
-              <WordReveal text="The Wrong Disaster" style={{ backgroundImage:'linear-gradient(135deg,#ef4444,#f97316)',backgroundClip:'text',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent' }} delay={0.25} />
+            <h2 style={{ fontSize: 'clamp(1.75rem,5vw,3.5rem)', fontWeight: 900, lineHeight: 1.2, maxWidth: '64rem', margin: '0 auto' }}>
+              <WordReveal text="India's Disaster Plans Are Written For" style={{ color: 'white' }} delay={0.05} /><br />
+              <WordReveal text="The Wrong Disaster" style={{ backgroundImage: 'linear-gradient(135deg,#ef4444,#f97316)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }} delay={0.25} />
             </h2>
           </div>
 
-          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once:true,margin:'-80px' }}
-            style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:'24px',marginBottom:'80px' }}
+          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }}
+            className="problems-grid"
+            style={{ display: 'grid', gap: '24px', marginBottom: '80px' }}
           >
-            {problems.map((p,i) => (
+            {problems.map((p, i) => (
               <motion.div key={i} variants={item}>
                 <TiltCard style={cardBase}>
-                  <div style={{ width:'40px',height:'40px',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'24px',background:'linear-gradient(135deg,rgba(220,38,38,0.2),rgba(249,115,22,0.1))' }}>
-                    <span style={{ color:'#fb923c',fontWeight:900,fontSize:'14px' }}>0{i+1}</span>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', background: 'linear-gradient(135deg,rgba(220,38,38,0.2),rgba(249,115,22,0.1))' }}>
+                    <span style={{ color: '#fb923c', fontWeight: 900, fontSize: '14px' }}>0{i + 1}</span>
                   </div>
-                  <h3 style={{ fontSize:'18px',fontWeight:700,marginBottom:'16px',color:'white' }}>{p.title}</h3>
-                  <p style={{ fontSize:'14px',color:'rgba(255,255,255,0.45)',lineHeight:1.6 }}>{p.desc}</p>
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', color: 'white' }}>{p.title}</h3>
+                  <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>{p.desc}</p>
                 </TiltCard>
               </motion.div>
             ))}
           </motion.div>
 
           <motion.div
-            initial={{ opacity:0,y:32,scale:.98 }}
-            whileInView={{ opacity:1,y:0,scale:1 }}
-            viewport={{ once:true,margin:'-60px' }}
-            transition={{ duration:.8,ease:[0.22,1,0.36,1] }}
-            style={{ padding:'48px',borderRadius:'24px',border:'1px solid rgba(239,68,68,0.2)',background:'rgba(220,38,38,0.04)',textAlign:'center' }}
+            className="quote-box"
+            initial={{ opacity: 0, y: 32, scale: .98 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: .8, ease: [0.22, 1, 0.36, 1] }}
+            style={{ padding: '48px', borderRadius: '24px', border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(220,38,38,0.04)', textAlign: 'center' }}
           >
-            <p style={{ fontSize:'16px',color:'rgba(255,255,255,0.7)',lineHeight:1.6,maxWidth:'64rem',margin:'0 auto' }}>
-              The <span style={{ color:'white',fontWeight:700 }}>2013 Kedarnath disaster</span> killed over 5,000 people. The <span style={{ color:'white',fontWeight:700 }}>2021 Chamoli GLOF</span> wiped out entire villages. <span style={{ color:'#fb923c',fontWeight:700 }}>Joshimath is sinking right now.</span> The plans exist. No one has stress-tested them. <span style={{ color:'white',fontWeight:700 }}>Until now.</span>
+            <p style={{ fontSize: 'clamp(13px,2vw,16px)', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, maxWidth: '64rem', margin: '0 auto' }}>
+              The <span style={{ color: 'white', fontWeight: 700 }}>2013 Kedarnath disaster</span> killed over 5,000 people. The <span style={{ color: 'white', fontWeight: 700 }}>2021 Chamoli GLOF</span> wiped out entire villages. <span style={{ color: '#fb923c', fontWeight: 700 }}>Joshimath is sinking right now.</span> The plans exist. No one has stress-tested them. <span style={{ color: 'white', fontWeight: 700 }}>Until now.</span>
             </p>
           </motion.div>
         </div>
       </section>
 
       {/* HOW IT WORKS */}
-      <section id="how-it-works" style={{ position:'relative',paddingTop:'112px',paddingBottom:'112px',background:'#05080f' }}>
-        <div style={{ maxWidth:'80rem',margin:'0 auto',padding:'0 1rem' }}>
-          <div style={{ textAlign:'center',marginBottom:'80px' }}>
+      <section id="how-it-works" className="section-pad" style={{ position: 'relative', background: '#05080f' }}>
+        <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1.25rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '80px' }}>
             <LabelReveal>How It Works</LabelReveal>
-            <h2 style={{ fontSize:'clamp(2rem,6vw,3.5rem)',fontWeight:900,lineHeight:1.2,maxWidth:'64rem',margin:'0 auto' }}>
-              <WordReveal text="From PDF to Bottleneck Report" style={{ color:'white' }} delay={0.05} /><br/>
-              <WordReveal text="In Under 30 Seconds" style={{ backgroundImage:'linear-gradient(135deg,#f97316,#fbbf24)',backgroundClip:'text',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent' }} delay={0.22} />
+            <h2 style={{ fontSize: 'clamp(1.75rem,5vw,3.5rem)', fontWeight: 900, lineHeight: 1.2, maxWidth: '64rem', margin: '0 auto' }}>
+              <WordReveal text="From PDF to Bottleneck Report" style={{ color: 'white' }} delay={0.05} /><br />
+              <WordReveal text="In Under 30 Seconds" style={{ backgroundImage: 'linear-gradient(135deg,#f97316,#fbbf24)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }} delay={0.22} />
             </h2>
           </div>
 
-          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once:true,margin:'-60px' }}
-            style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:'16px' }}
+          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }}
+            className="steps-grid"
+            style={{ display: 'grid', gap: '16px' }}
           >
-            {steps.map((step,i) => (
+            {steps.map((step, i) => (
               <motion.div key={i} variants={item}>
-                <TiltCard style={{ ...cardBase,padding:'24px',display:'flex',flexDirection:'column',alignItems:'flex-start' }}>
-                  <motion.div whileHover={{ rotate:[0,-12,12,0],scale:1.25 }} transition={{ duration:.35 }}
-                    style={{ width:'48px',height:'48px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'12px',marginBottom:'16px',fontSize:'24px',background:'linear-gradient(135deg,rgba(249,115,22,0.15),rgba(220,38,38,0.1))' }}
+                <TiltCard style={{ ...cardBase, padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <motion.div whileHover={{ rotate: [0, -12, 12, 0], scale: 1.25 }} transition={{ duration: .35 }}
+                    style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', marginBottom: '16px', fontSize: '24px', background: 'linear-gradient(135deg,rgba(249,115,22,0.15),rgba(220,38,38,0.1))' }}
                   >{step.icon}</motion.div>
-                  <span style={{ fontSize:'10px',fontWeight:900,color:'rgba(251,146,60,0.6)',letterSpacing:'1px',marginBottom:'8px',textTransform:'uppercase' }}>{step.num}</span>
-                  <h4 style={{ fontWeight:700,color:'white',marginBottom:'12px' }}>{step.title}</h4>
-                  <p style={{ fontSize:'12px',color:'rgba(255,255,255,0.4)',lineHeight:1.5 }}>{step.desc}</p>
+                  <span style={{ fontSize: '10px', fontWeight: 900, color: 'rgba(251,146,60,0.6)', letterSpacing: '1px', marginBottom: '8px', textTransform: 'uppercase' }}>{step.num}</span>
+                  <h4 style={{ fontWeight: 700, color: 'white', marginBottom: '12px' }}>{step.title}</h4>
+                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>{step.desc}</p>
                 </TiltCard>
               </motion.div>
             ))}
@@ -450,39 +607,39 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section style={{ paddingTop:'80px',paddingBottom:'80px',background:'linear-gradient(to right,rgba(220,38,38,0.1) 0%,rgba(249,115,22,0.08) 100%)',textAlign:'center' }}>
+      <section className="cta-section" style={{ paddingTop: '80px', paddingBottom: '80px', background: 'linear-gradient(to right,rgba(220,38,38,0.1) 0%,rgba(249,115,22,0.08) 100%)', textAlign: 'center' }}>
         <motion.div
-          initial={{ opacity:0,y:40 }}
-          whileInView={{ opacity:1,y:0 }}
-          viewport={{ once:true,margin:'-80px' }}
-          transition={{ duration:.8,ease:[0.22,1,0.36,1] }}
-          style={{ maxWidth:'56rem',margin:'0 auto',padding:'0 1rem' }}
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: .8, ease: [0.22, 1, 0.36, 1] }}
+          style={{ maxWidth: '56rem', margin: '0 auto', padding: '0 1.25rem' }}
         >
-          <h2 style={{ fontSize:'clamp(1.5rem,5vw,3rem)',fontWeight:900,marginBottom:'24px',lineHeight:1.2 }}>
-            <WordReveal text="Stress-test your disaster plan" style={{ color:'white' }} delay={0} /><br/>
-            <WordReveal text="before the disaster does." style={{ backgroundImage:'linear-gradient(135deg,#ef4444,#f97316)',backgroundClip:'text',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent' }} delay={0.18} />
+          <h2 style={{ fontSize: 'clamp(1.5rem,4.5vw,3rem)', fontWeight: 900, marginBottom: '24px', lineHeight: 1.2 }}>
+            <WordReveal text="Stress-test your disaster plan" style={{ color: 'white' }} delay={0} /><br />
+            <WordReveal text="before the disaster does." style={{ backgroundImage: 'linear-gradient(135deg,#ef4444,#f97316)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }} delay={0.18} />
           </h2>
-          <motion.p initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }} transition={{ delay:.3,duration:.6 }}
-            style={{ color:'rgba(255,255,255,0.5)',marginBottom:'40px',fontSize:'14px',lineHeight:1.6 }}
+          <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: .3, duration: .6 }}
+            style={{ color: 'rgba(255,255,255,0.5)', marginBottom: '40px', fontSize: '14px', lineHeight: 1.6 }}
           >
             Upload any disaster advisory. Watch citizens survive or get trapped in real time. Get a report naming every gap.
           </motion.p>
           <MagneticButton onClick={() => navigate('/analysis')}
-            style={{ padding:'16px 48px',borderRadius:'9999px',fontWeight:700,fontSize:'14px',background:'linear-gradient(135deg,#dc2626 0%,#f97316 100%)',color:'white',boxShadow:'0 0 40px rgba(220,38,38,0.4)' }}
+            style={{ padding: '16px 48px', borderRadius: '9999px', fontWeight: 700, fontSize: '14px', background: 'linear-gradient(135deg,#dc2626 0%,#f97316 100%)', color: 'white', boxShadow: '0 0 40px rgba(220,38,38,0.4)' }}
           >▶ Start Analysis</MagneticButton>
         </motion.div>
       </section>
 
       {/* FOOTER */}
-      <footer style={{ paddingTop:'40px',paddingBottom:'40px',borderTop:'1px solid rgba(255,255,255,0.06)',background:'#03040a' }}>
-        <div style={{ maxWidth:'80rem',margin:'0 auto',padding:'0 1rem',display:'flex',flexDirection:'column',alignItems:'center',gap:'24px',textAlign:'center' }}>
-          <p style={{ fontSize:'12px',color:'rgba(255,255,255,0.25)',lineHeight:1.6 }}>
+      <footer style={{ paddingTop: '40px', paddingBottom: '40px', borderTop: '1px solid rgba(255,255,255,0.06)', background: '#03040a' }}>
+        <div className="footer-inner" style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1.25rem', display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', lineHeight: 1.6, margin: 0 }}>
             A multi-agent disaster simulation platform built for Uttarakhand and India's most disaster-prone regions.
           </p>
-          <div style={{ display:'flex',gap:'16px' }}>
-            {[TwitterIcon,GitHubIcon].map((Icon,i) => (
-              <motion.a key={i} href="#" whileHover={{ scale:1.25,color:'white' }} style={{ color:'rgba(255,255,255,0.3)' }}>
-                <Icon size={18}/>
+          <div style={{ display: 'flex', gap: '16px', flexShrink: 0 }}>
+            {[TwitterIcon, GitHubIcon].map((Icon, i) => (
+              <motion.a key={i} href="#" whileHover={{ scale: 1.25, color: 'white' }} style={{ color: 'rgba(255,255,255,0.3)' }}>
+                <Icon size={18} />
               </motion.a>
             ))}
           </div>

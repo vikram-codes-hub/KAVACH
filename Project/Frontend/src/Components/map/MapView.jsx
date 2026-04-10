@@ -15,7 +15,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-// ── Agent / Zone type legend entries ──────────────────────────
 const AGENT_TYPES = [
   { color: '#3b82f6', label: 'Responder' },
   { color: '#f59e0b', label: 'Mobile Citizen' },
@@ -33,6 +32,7 @@ export default function MapView() {
   const { mapCenter, pageState, agents } = useSimulationContext()
   const [showHeatmap, setShowHeatmap] = useState(false)
   const [showComm,    setShowComm]    = useState(false)
+  const [legendOpen,  setLegendOpen]  = useState(false)
 
   const showAgentLegend = agents.length > 0 || pageState === 'running'
 
@@ -54,7 +54,8 @@ export default function MapView() {
               background: active ? 'rgba(255,107,43,0.15)' : 'rgba(8,8,8,0.88)',
               border: `1px solid ${active ? '#ff6b2b60' : '#252525'}`,
               borderRadius: 4, color: active ? '#ff6b2b' : '#666',
-              cursor: 'pointer', letterSpacing: '0.04em', backdropFilter: 'blur(6px)'
+              cursor: 'pointer', letterSpacing: '0.04em', backdropFilter: 'blur(6px)',
+              whiteSpace: 'nowrap'
             }}>{label}</button>
           ))}
         </div>
@@ -79,7 +80,7 @@ export default function MapView() {
         <AgentCanvas />
       </MapContainer>
 
-      {/* ── Entity / Agent types legend (bottom-left, always visible after upload) ── */}
+      {/* ── Legend — collapsible on mobile ── */}
       {showAgentLegend && (
         <div style={{
           position: 'absolute',
@@ -89,50 +90,81 @@ export default function MapView() {
           background: 'rgba(10,10,10,0.88)',
           border: '1px solid #252525',
           borderRadius: 6,
-          padding: '10px 14px',
           backdropFilter: 'blur(6px)',
-          minWidth: 160
+          minWidth: 160,
+          overflow: 'hidden'
         }}>
-          {/* Agent types header */}
+          {/* Legend toggle header (mobile-friendly) */}
+          <button
+            onClick={() => setLegendOpen(v => !v)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '7px 14px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#ff6b2b',
+              fontFamily: "'Space Mono', monospace",
+              fontSize: 9,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase'
+            }}
+          >
+            <span>Legend</span>
+            <span style={{
+              transform: legendOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s ease',
+              display: 'inline-block',
+              fontSize: 10
+            }}>▾</span>
+          </button>
+
+          {/* Legend body — hidden on small screens until toggled */}
           <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 9,
-            color: '#ff6b2b',
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            marginBottom: 8,
-            fontWeight: 600
-          }}>
-            Agent Types
+            padding: legendOpen ? '0 14px 10px' : 0,
+            maxHeight: legendOpen ? 300 : 0,
+            overflow: 'hidden',
+            transition: 'max-height 0.25s ease, padding 0.25s ease'
+          }}
+          className="map-legend-body"
+          >
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 9,
+              color: '#ff6b2b',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              marginBottom: 8,
+              fontWeight: 600
+            }}>
+              Agent Types
+            </div>
+
+            {AGENT_TYPES.map(({ color, label }) => (
+              <LegendRow key={label} color={color} label={label} shape="circle" />
+            ))}
+
+            <div style={{ height: 1, background: '#1e1e1e', margin: '9px 0' }} />
+
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 9,
+              color: '#ff6b2b',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              marginBottom: 8,
+              fontWeight: 600
+            }}>
+              Zone Types
+            </div>
+
+            {ZONE_TYPES.map(({ color, border, label }) => (
+              <LegendRow key={label} color={color} border={border} label={label} shape="square" />
+            ))}
           </div>
-
-          {AGENT_TYPES.map(({ color, label }) => (
-            <LegendRow key={label} color={color} label={label} shape="circle" />
-          ))}
-
-          {/* Divider */}
-          <div style={{
-            height: 1,
-            background: '#1e1e1e',
-            margin: '9px 0'
-          }} />
-
-          {/* Zone types header */}
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 9,
-            color: '#ff6b2b',
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            marginBottom: 8,
-            fontWeight: 600
-          }}>
-            Zone Types
-          </div>
-
-          {ZONE_TYPES.map(({ color, border, label }) => (
-            <LegendRow key={label} color={color} border={border} label={label} shape="square" />
-          ))}
         </div>
       )}
 
@@ -149,11 +181,20 @@ export default function MapView() {
       }}>
         © OSM · CARTO
       </div>
+
+      <style>{`
+        /* On wider screens, always show legend body */
+        @media (min-width: 640px) {
+          .map-legend-body {
+            max-height: 300px !important;
+            padding: 0 14px 10px !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
 
-// Single legend row
 function LegendRow({ color, border, label, shape }) {
   return (
     <div style={{
@@ -164,28 +205,18 @@ function LegendRow({ color, border, label, shape }) {
     }}>
       {shape === 'circle' ? (
         <div style={{
-          width: 9,
-          height: 9,
-          borderRadius: '50%',
-          background: color,
-          flexShrink: 0,
-          boxShadow: `0 0 4px ${color}88`
+          width: 9, height: 9, borderRadius: '50%', background: color,
+          flexShrink: 0, boxShadow: `0 0 4px ${color}88`
         }} />
       ) : (
         <div style={{
-          width: 10,
-          height: 10,
-          borderRadius: 2,
-          background: color,
-          border: `1px solid ${border}`,
-          flexShrink: 0
+          width: 10, height: 10, borderRadius: 2, background: color,
+          border: `1px solid ${border}`, flexShrink: 0
         }} />
       )}
       <span style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 10,
-        color: '#aaa',
-        letterSpacing: '0.02em'
+        fontFamily: 'var(--font-mono)', fontSize: 10,
+        color: '#aaa', letterSpacing: '0.02em'
       }}>
         {label}
       </span>
@@ -193,7 +224,6 @@ function LegendRow({ color, border, label, shape }) {
   )
 }
 
-// Inner component to fly map to new center
 function MapController() {
   const map = useMap()
   const { mapCenter } = useSimulationContext()

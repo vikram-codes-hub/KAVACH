@@ -246,16 +246,16 @@ export default function SimulationPage() {
           pageState={pageState}
         />
 
-        <div style={{
+        {/* ── Main content area ── */}
+        <div className="sim-content-area" style={{
           flex: 1,
           display: 'flex',
           overflow: 'hidden',
           minHeight: 0
         }}>
 
-          {/* Left — Map 55% */}
-          <div style={{
-            width: '55%',
+          {/* Left — Map */}
+          <div className="sim-map-pane" style={{
             position: 'relative',
             overflow: 'hidden',
             background: '#0a0f1a',
@@ -296,15 +296,13 @@ export default function SimulationPage() {
               ))}
             </div>
 
-            {/* Upload overlay */}
             {pageState === 'upload' && (
               <UploadOverlay onUpload={handleUpload} />
             )}
           </div>
 
-          {/* Right — Pipeline 45% */}
-          <div style={{
-            width: '45%',
+          {/* Right — Pipeline */}
+          <div className="sim-pipeline-pane" style={{
             borderLeft: '1px solid var(--border)',
             overflow: 'hidden',
             display: 'flex',
@@ -321,6 +319,52 @@ export default function SimulationPage() {
           height={terminalHeight}
         />
       </div>
+
+      <style>{`
+        /* ── Desktop: side by side ── */
+        .sim-content-area {
+          flex-direction: row;
+        }
+        .sim-map-pane {
+          width: 55%;
+          height: 100%;
+        }
+        .sim-pipeline-pane {
+          width: 45%;
+          height: 100%;
+        }
+
+        /* ── Mobile (<768px): stack vertically ── */
+        @media (max-width: 767px) {
+          .sim-content-area {
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+          }
+          .sim-map-pane {
+            width: 100%;
+            height: 45vh;
+            min-height: 220px;
+            flex-shrink: 0;
+            border-left: none;
+          }
+          .sim-pipeline-pane {
+            width: 100%;
+            height: auto;
+            min-height: 0;
+            flex: 1;
+            border-left: none;
+            border-top: 1px solid var(--border);
+            overflow-y: auto;
+          }
+        }
+
+        /* ── Tablet (768–1023px): narrower side-by-side ── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .sim-map-pane    { width: 50%; }
+          .sim-pipeline-pane { width: 50%; }
+        }
+      `}</style>
     </SimulationContext.Provider>
   )
 }
@@ -351,10 +395,10 @@ function UploadOverlay({ onUpload }) {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 500,
-      backdropFilter: 'blur(4px)'
+      backdropFilter: 'blur(4px)',
+      padding: '16px'
     }}>
 
-      {/* Logo */}
       <div style={{
         fontFamily: 'var(--font-mono)',
         fontSize: 32,
@@ -370,7 +414,6 @@ function UploadOverlay({ onUpload }) {
         KAVACH
       </div>
 
-      {/* Subtitle */}
       <div style={{
         fontFamily: 'var(--font-body)',
         fontSize: 12,
@@ -382,14 +425,14 @@ function UploadOverlay({ onUpload }) {
         Multi-Agent Disaster Response Simulation Platform
       </div>
 
-      {/* Drop zone */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         onClick={() => document.getElementById('pdf-input').click()}
         style={{
-          width: 340,
+          width: '100%',
+          maxWidth: 340,
           height: 160,
           border: `2px dashed ${dragging ? 'var(--accent-orange)' : 'var(--border-light)'}`,
           borderRadius: 8,
@@ -400,7 +443,8 @@ function UploadOverlay({ onUpload }) {
           cursor: 'pointer',
           transition: 'all 0.2s ease',
           background: dragging ? 'rgba(255,107,43,0.05)' : 'rgba(255,255,255,0.02)',
-          gap: 8
+          gap: 8,
+          boxSizing: 'border-box'
         }}
       >
         <div style={{ fontSize: 28 }}>📄</div>
@@ -431,7 +475,6 @@ function UploadOverlay({ onUpload }) {
         onChange={handleFileInput}
       />
 
-      {/* Bottom hint */}
       <div style={{
         marginTop: 16,
         fontSize: 10,
